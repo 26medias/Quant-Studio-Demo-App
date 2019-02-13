@@ -4,28 +4,28 @@ angular.module('quant-studio', [])
 .directive('appMain', function() {
 	var component = function($scope, element, attrs, ctlr, transcludeFn) {
 		
-		
+		// To make it easier to output HTML
 		var output = function(status, details) {
 			$('#output').append($('<div>'+status+'</div>'));
 			console.log(status, details);
 		}
 		
-		// Init the app when the SDK is loaded
+		// 
 		sdk.onInit(function() {
 			output("App started");
 		});
 		
-		// Refresh the charts when the datasets is updated
+		// 
 		sdk.onDatasetUpdate(function(datasets) {
 			output("Datasets update received", datasets);
 		});
 		
-		// Refresh the charts when the datasets is updated
+		// 
 		sdk.onProjectChange(function(datasets) {
 			output("Project update received", datasets);
 		});
 		
-		// Handle the port drag
+		// Port drag & drop
 		sdk.onDrag(function(eventType, data) {
 			switch (eventType) {
 				case "start":
@@ -35,11 +35,26 @@ angular.module('quant-studio', [])
 					if (data.end.left > 0 && data.end.top > 0) {
 						output("[drag] Hover ("+data.end.left+";"+data.end.top+") -> "+data.data.box+':'+data.data.id, data);
 					} else {
-						output("[drag] Moving ("+data.end.left+";"+data.end.top+") -> "+data.data.box+':'+data.data.id, data);
+						//output("[drag] Moving ("+data.end.left+";"+data.end.top+") -> "+data.data.box+':'+data.data.id, data);
 					}
 				break;
 				case "end":
-					output("[drag] Ended -> "+data.data.box+':'+data.data.id, data);
+					if (data.end.left > 0 && data.end.top > 0) {
+						// Access the dataset for that box, from the datasets the SDK obtained from the project:
+						var dataset = sdk.data['datasets'][data.data.box];
+						// Filter the ports, keep only the date and that port:
+						var filtered = _.map(dataset, function(item) {
+							var obj = {
+								d:	item.d	// Keep the date
+							};
+							// Keep the port that was dragged, renamed it with the column name
+							obj[data.data.label] = item[data.data.box+':'+data.data.id]; // keep the property "boxId:portId"
+							return obj;
+						});
+						output("Data output from that port: <code>... "+_.pluck(filtered.slice(-5), data.data.label).join(' / ')+"</code>");
+					} else {
+						output("[drag] Ended outside the app -> "+data.data.box+':'+data.data.id, data);
+					}
 				break;
 			}
 			
